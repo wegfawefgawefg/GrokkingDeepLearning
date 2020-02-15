@@ -70,9 +70,20 @@ class MLUtils:
         return newLabels
 
     @staticmethod
+    def completeTheSquare(length):
+        isSquare = math.floor(math.sqrt(length)) == math.sqrt(length)
+        if isSquare:
+            return 0
+        else:
+            properWidth = math.floor(math.sqrt(length)) + 1
+            properLength = int(math.pow(properWidth, 2) - length)
+            return properLength
+
+    @staticmethod
     def visualizeLayers(layers):
         images = []
         for l, layer in enumerate(layers):
+            #   create each grayscale image
             introspects = []
             for i in range(0, layer.shape[1]):
                 introspect = layer.T[i]
@@ -84,6 +95,13 @@ class MLUtils:
                 introspect = introspect * amp
                 introspects.append(introspect)
             introspects = np.array(introspects)
+
+            #   pad nonsquare images
+            paddingNeeded = MLUtils.completeTheSquare(introspects.shape[1])
+            rightPadding = np.zeros([introspects.shape[0], paddingNeeded])
+            introspects = np.hstack([introspects, rightPadding])
+
+            #   convert to color images
             introspectsImageGreyscale = introspects.flatten()
             introspectsImage = []
             for num in introspectsImageGreyscale:
@@ -101,7 +119,8 @@ class MLUtils:
                     introspectsImage.append(0.0)
             introspectsImage = np.asarray(introspectsImage)
             introspectsImage = np.clip(introspectsImage, 0.0, 255.0)
+            imageWidth = int(math.sqrt(introspects.shape[1]))
             image = MLUtils.genColorImageLine(
-                introspectsImage, layer.shape[1],  int(math.sqrt(layer.shape[0])))
+                introspectsImage, layer.shape[1],  imageWidth)
             images.append(image)
         MLUtils.showColorImageLineGrid(images)

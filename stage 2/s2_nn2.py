@@ -4,7 +4,7 @@ from keras.datasets import mnist
 from MLUtils import MLUtils
 import math
 
-np.random.seed(10)
+np.random.seed(1)
 
 #   ----    params  ----    #
 train = True
