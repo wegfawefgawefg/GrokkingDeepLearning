@@ -31,12 +31,6 @@ for j in range(iterations):
         layer_1 = relu(np.dot(layer_0,weights_0_1))
         layer_2 = np.dot(layer_1,weights_1_2)
 
-        print("layer1 shape")
-        print(layer_1.shape)
-        print("layer2 shape")
-        print(layer_2.shape)
-
-
         error += np.sum((labels[i:i+1] - layer_2) ** 2)
         correct_cnt += int(np.argmax(layer_2) == \
                                         np.argmax(labels[i:i+1]))
@@ -45,18 +39,8 @@ for j in range(iterations):
         layer_1_delta = layer_2_delta.dot(weights_1_2.T)\
                                     * relu2deriv(layer_1)
 
-        print("layer2delta")
-        print(layer_2_delta.shape)
-        print("layer1 delta")
-        print(layer_1_delta.shape)
-
         weights_1_2 += alpha * layer_1.T.dot(layer_2_delta)
         weights_0_1 += alpha * layer_0.T.dot(layer_1_delta)
-
-        print("weights1-2")
-        print(weights_1_2.shape)
-        print("weight0-1")
-        print(weights_0_1.shape)
 
     sys.stdout.write("\r I:"+str(j)+ \
                      " Train-Err:" + str(error/float(len(images)))[0:5] +\
