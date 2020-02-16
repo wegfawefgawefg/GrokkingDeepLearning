@@ -4,6 +4,10 @@ from keras.datasets import mnist
 from MLUtils import MLUtils
 import math
 
+'''
+add batching
+'''
+
 np.random.seed(1)
 
 #   ----    params  ----    #
@@ -11,9 +15,12 @@ train = True
 test = True
 load = True
 visualize = True
-alpha = 0.001
+dropout = True
+regularization = False
+alpha = 0.01
 iterations = 60000
-hiddenLayerSize = 10
+batchSize = 128
+hiddenLayerSize = int(math.pow(2, 4))
 inputSize = 28*28
 numLabels = 10
 
@@ -29,8 +36,7 @@ def derRelu(x):
 layer1 = weightScaler * (2.0 * np.random.random((inputSize, hiddenLayerSize)) - 1.0)
 layer2 = weightScaler * (2.0 * np.random.random((hiddenLayerSize, numLabels)) - 1.0)
 
-#   ----    train   ----    #
-if train:
+if train or test:
     #   fetch data
     (rawTrainingData, rawTrainingLabels), (rawTestData, rawTestLabels) = mnist.load_data()
 
@@ -44,34 +50,49 @@ if train:
     testData = testData / 255.0
     testLabels = MLUtils.oneHot(rawTestLabels)
 
+#   ----    train   ----    #
+if train:
     error = 0.0
     numCorrect = 0
-    for i in range(iterations):
+    batchRounds = int(iterations / batchSize)
+    for i in range(batchRounds):
+        if i%100 == 0:
+           sys.stdout.write( "\r progress: %" + str((i/batchRounds)*100)[:5] ) 
         
-        index = i%len(trainingData)
+        # index = i%len(trainingData)
+        batchStartIndex = i * batchSize
+        batchEndIndex = (i+1) * batchSize
         inputData = trainingData[index:index+1]
         labels = trainingLabels[index:index+1]
 
+
         layer1Output = relu( inputData.dot( layer1 ) )
+        if dropout:
+            dropoutMask = np.random.randint(2, size=layer1Output.shape)
+            layer1Output *= dropoutMask
+            layer1Output *= 2.0
         layer2Output = layer1Output.dot( layer2 )
 
         layer2Delta = labels - layer2Output
         layer1Delta = layer2Delta.dot( layer2.T ) * derRelu(layer1Output)
+
+        if dropout:
+            layer1Delta *= dropoutMask
 
         layer2 += alpha * layer1Output.T.dot( layer2Delta )
         layer1 += alpha * inputData.T.dot( layer1Delta )
 
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
-        if int( np.argmax(layer2Output) ) == np.argmax(trainingLabels[index]):
+        if int( np.argmax(layer2Output) ) == np.argmax(labels):
             numCorrect += 1
         
-    trainingError = error / float(len(trainingData))
-    trainingAccuracy = numCorrect / float(len(trainingData))
+    trainingError = error / float(len(trainingData)) * 100.0
+    trainingAccuracy = numCorrect / float(len(trainingData)) * 100.0
     sys.stdout.write(
         "\r iter: " + str(i) + \
-        " training error: "+str(trainingError)[0:5] + \
-        " training accuracy: "+str(trainingAccuracy)[0:5]
+        " training error: %"+str(trainingError)[0:5] + \
+        " training accuracy: %"+str(trainingAccuracy)[0:5]
     )
     print()
 
@@ -95,8 +116,8 @@ if test:
     for i in range(testIterations):
         
         index = i
-        inputData = trainingData[index:index+1]
-        labels = trainingLabels[index:index+1]
+        inputData = testData[index:index+1]
+        labels = testLabels[index:index+1]
 
         layer1Output = relu( inputData.dot( layer1 ) )
         layer2Output = layer1Output.dot( layer2 )
@@ -105,13 +126,13 @@ if test:
 
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
-        if int( np.argmax(layer2Output) ) == np.argmax(trainingLabels[index]):
+        if int( np.argmax(layer2Output) ) == np.argmax(labels):
             numCorrect += 1
         
-    testError = error / float(len(testData))
-    testAccuracy = numCorrect / float(len(testData))
+    testError = error / float(len(testData)) * 100.0
+    testAccuracy = numCorrect / float(len(testData)) * 100.0
     sys.stdout.write(
         "\r iter: " + str(i) + \
-        " test error: "+str(testError)[0:5] + \
-        " test accuracy: "+str(testAccuracy)[0:5]
+        " test error: %"+str(testError)[0:5] + \
+        " test accuracy: %"+str(testAccuracy)[0:5]
     )

@@ -2,6 +2,11 @@ import numpy as np
 import math
 from PIL import Image
 
+'''
+last update:
+    now supports image squaring!
+    instead of cropping rectangular inputs to smaller squares. yay
+'''
 class MLUtils:
     @staticmethod
     def oneHot(labels):
@@ -123,4 +128,4 @@ class MLUtils:
             image = MLUtils.genColorImageLine(
                 introspectsImage, layer.shape[1],  imageWidth)
             images.append(image)
-        MLUtils.showColorImageLineGrid(images)
+        # MLUtils.showColorImageLineGrid(images)
