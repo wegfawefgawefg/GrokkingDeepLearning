@@ -9,7 +9,7 @@ from MLUtils import MLUtils
 from ActivationFunctions import ActivationFunctions as activFuncs
 
 '''
-add convolutions
+add MULTIPLE convolution LAYERS BABYEEE
 add input dropout? maybe?? how did 1998 get such high score
 add more activation functions
 '''
@@ -18,31 +18,36 @@ np.random.seed(1)
 
 #   ----    params  ----    #
 train = True
-test = True
-load = True
+test = False
+load = False
 visualize = True
-dropout = False
+dropout = True
 regularization = False
-alpha = 0.1
+alphaDecay = False
+alpha = 4.0
 weightScaler = 0.01
-alphaDecay = 0.0
+alphaDecay = 0.0001
 minAlpha = 0.001
 iterations = 60000
 batchSize = 32
 numLabels = 10
+testBatchSize = 1
 
 #   convolution settings
-numKernels = 3
+numKernels = 8
 kernelWidth = 3
 inputImageWidth = 28
+
+
+
+#   might not need these
 inputSize = inputImageWidth * inputImageWidth
 layer1ConvolvedDataWidth = inputImageWidth - kernelWidth + 1
-maxPoolConvedDataWidth = layer1ConvolvedDataWidth // 2
-postConvLayerSize = maxPoolConvedDataWidth * maxPoolConvedDataWidth * numKernels
-
-
+postConvLayerSize = layer1ConvolvedDataWidth * layer1ConvolvedDataWidth * numKernels
+print(postConvLayerSize)
+quit()
 #   ----    create network  ----    #
-convLayer1 =  weightScaler * (2.0 * np.random.random((numKernels, kernelWidth, kernelWidth)) - 1.0)
+layer1 = weightScaler * (2.0 * np.random.random((kernelWidth * kernelWidth, numKernels)) - 1.0)
 layer2 = weightScaler * (2.0 * np.random.random((postConvLayerSize, numLabels)) - 1.0)
 
 if train or test:
@@ -74,41 +79,31 @@ if train:
         labels = trainingLabels[batchStartIndex:batchEndIndex]
 
         #   apply convolutions
-        shapeOfBatch = (batchSize, numKernels, maxPoolConvedDataWidth, maxPoolConvedDataWidth)
-        batchOfImageConvSets = np.zeros(shapeOfBatch)
-        for i in range(0, batchSize):
-            image2d = inputData[i].reshape((inputImageWidth, inputImageWidth))
-            imageConvs = [signal.convolve2d(image2d, convLayer1[c] ,mode='valid') for c in range(0, len(convLayer1))]
-            imageConvs = [skimage.measure.block_reduce(imageConvs[co], (2,2), np.max) for co in range(0, len(imageConvs))]
-            batchOfImageConvSets[i] = np.array(imageConvs)
-        layer1Output = batchOfImageConvSets.reshape(batchSize, numKernels * maxPoolConvedDataWidth * maxPoolConvedDataWidth)
+        inputData2d = inputData.reshape(batchSize, inputImageWidth, inputImageWidth)
+        batchKernelSectors, kernelizedPreFlatShape = MLUtils.kernelize2d(inputData2d, kernelWidth)
+        convs1Output = batchKernelSectors.dot(layer1)
+        layer1Output = activFuncs.lrelu( convs1Output.reshape( kernelizedPreFlatShape[0], -1 ) )
 
-        layer1Output = activFuncs.lrelu( layer1Output )
         if dropout:
             dropoutMask = np.random.randint(2, size=layer1Output.shape)
             layer1Output *= dropoutMask
             layer1Output *= 2.0
         layer2Output = layer1Output.dot( layer2 )
 
-        layer2Delta = (labels - layer2Output) / float(batchSize)
+        layer2Delta = (labels - layer2Output) / (float(batchSize) * layer2Output.shape[0])
         layer1Delta = layer2Delta.dot( layer2.T ) * activFuncs.derlrelu(layer1Output)
 
         if dropout:
             layer1Delta *= dropoutMask
 
         layer2 += alpha * layer1Output.T.dot( layer2Delta )
-        #   adjust the convolution weights a little differently
-        #   #   compute the weight delta normally
-        layer1WeightAdjustments = alpha * inputData.T.dot( layer1Delta )
-        #   #   then reshape the layer1 weight adjustments to match the convolutions
-        print("shapes")
-        print(layer1WeightAdjustments.shape)
-        print(inputData.T.shape)
-        quit()
-        
-        layer1 += alpha * inputData.T.dot( layer1Delta )
 
-        alpha = max(alpha - alphaDecay, minAlpha)
+        #   reshape inputs to pass weights to correct kernels
+        layer1Deltas_reshape = layer1Delta.reshape( convs1Output.shape )
+        layer1 += alpha * batchKernelSectors.T.dot( layer1Deltas_reshape )
+
+        if alphaDecay:
+            alpha = max(alpha - alphaDecay, minAlpha)
 
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
@@ -133,7 +128,8 @@ if load:
     layer2 = np.load("saved_layers/layer2.nn.npy")
 
 if visualize:
-    layers = [layer1, layer2]
+    # layers = [layer1, layer2]
+    layers = [layer1]
     MLUtils.visualizeLayers(layers)
 
 #   ----    test    ----    #
@@ -143,11 +139,16 @@ if test:
     numCorrect = 0
     for i in range(testIterations):
         
-        index = i
-        inputData = testData[index:index+1]
-        labels = testLabels[index:index+1]
+        batchStartIndex = i * testBatchSize
+        batchEndIndex = (i+1) * testBatchSize
+        inputData = trainingData[batchStartIndex:batchEndIndex]
+        labels = trainingLabels[batchStartIndex:batchEndIndex]
 
-        layer1Output = activFuncs.lrelu( inputData.dot( layer1 ) )
+        #   apply convolutions
+        inputData2d = inputData.reshape(testBatchSize, inputImageWidth, inputImageWidth)
+        batchKernelSectors, kernelizedPreFlatShape = MLUtils.kernelize2d(inputData2d, kernelWidth)
+        convs1Output = batchKernelSectors.dot(layer1)
+        layer1Output = activFuncs.lrelu( convs1Output.reshape( kernelizedPreFlatShape[0], -1 ) )
         layer2Output = layer1Output.dot( layer2 )
 
         layer2Delta = labels - layer2Output

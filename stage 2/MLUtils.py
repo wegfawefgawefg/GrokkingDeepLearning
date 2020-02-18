@@ -128,4 +128,40 @@ class MLUtils:
             image = MLUtils.genColorImageLine(
                 introspectsImage, layer.shape[1],  imageWidth)
             images.append(image)
-        # MLUtils.showColorImageLineGrid(images)
+        MLUtils.showColorImageLineGrid(images)
+
+    @staticmethod
+    def makeFakeImageBatch():
+        a = np.arange(9)
+        b = np.array([a, a*2, a*3])
+        b = b.reshape(3, 3, 3)
+        return b
+
+    @staticmethod
+    def getImageSection(batch, rowStart, rowEnd, colStart, colEnd):
+        section = batch[:, rowStart:rowEnd, colStart:colEnd]
+        return section.reshape(-1, 1, rowEnd - rowStart, colEnd - colStart)
+
+    @staticmethod
+    def kernelize2d(batch, kernelWidth):
+        ''' input one or more 2d vectors 
+            -   you may have to reshape before using
+            -   only works on batches i believe. might not work on batch of size 1
+        '''
+        sections = []
+        for rowStart in range(0, batch.shape[1] - kernelWidth + 1):
+            for colStart in range(0, batch.shape[2] - kernelWidth + 1):
+                section = MLUtils.getImageSection(
+                    batch,
+                    rowStart,
+                    rowStart + kernelWidth,
+                    colStart,
+                    colStart + kernelWidth)
+                sections.append(section)
+
+        expand = np.concatenate(sections, axis=1)
+        sh = expand.shape
+        flat = expand.reshape(sh[0] * sh[1], -1)
+        #   structure of output is:
+        #   [im1sectors + im2Sectors + ...imNSectors]
+        return flat, sh
