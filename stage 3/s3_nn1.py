@@ -9,11 +9,8 @@ from MLUtils import MLUtils
 from ActivationFunctions import ActivationFunctions as activFuncs
 
 '''
-add MULTIPLE convolution LAYERS BABYEEE
-add input dropout? maybe?? how did 1998 get such high score
-add more activation functions
-add generative networking
-use np.kron(a, np.ones((2, 2))) to upscale, to inverse the mean pooling
+-move on to the next chapter
+-finish the book lad
 '''
 
 np.random.seed(1)
