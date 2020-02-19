@@ -5,12 +5,11 @@ from scipy import signal
 import math
 import skimage.measure
 
-from MLUtils import MLUtils
-from ActivationFunctions import ActivationFunctions as activFuncs
+import MLUtils as MLUtils
+import ActivationFunctions as activFuncs
 
 '''
--move on to the next chapter
--finish the book lad
+-finish chapter 11 god damn you are slow as fuck you spent 2 weeks on conv
 '''
 
 np.random.seed(1)

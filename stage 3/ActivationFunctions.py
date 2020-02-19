@@ -1,21 +1,26 @@
 import numpy as np
 
-class ActivationFunctions:
-    @staticmethod
-    def relu(x):
-        return (x > 0) * x
-    
-    @staticmethod
-    def derRelu(x):
-        return x > 0
+def relu(x):
+    return (x > 0) * x
 
-    @staticmethod
-    def lrelu(x, leak=0.01):
-        # return ((x > 0) * x) + (x <= 0) * leak
-        return np.maximum(x, x * leak)
+def derRelu(x):
+    return x > 0
 
-    @staticmethod
-    def derlrelu(x, leak=0.01):
-        dx = np.ones_like(x)
-        dx[x <= 0] = leak
-        return dx
+def lrelu(x, leak=0.01):
+    # return ((x > 0) * x) + (x <= 0) * leak
+    return np.maximum(x, x * leak)
+
+def derlrelu(x, leak=0.01):
+    dx = np.ones_like(x)
+    dx[x <= 0] = leak
+    return dx
+
+def tanh(x):
+    return np.tanh(x)
+
+def tanh2deriv(x):
+    return 1 - (x ** 2)
+
+def softmax(x):
+    temp = np.exp(x)
+    return temp / np.sum(temp, axis=1, keepdims=True)
