@@ -14,6 +14,10 @@ add input dropout? maybe?? how did 1998 get such high score
 add more activation functions
 add generative networking
 use np.kron(a, np.ones((2, 2))) to upscale, to inverse the mean pooling
+
+evaluate the thing with test, you dont even know if its better than a fully connected layer alone, 
+    and you twat you have no idea what the performance implications of convolution size or number are
+    - :^) yes master
 '''
 
 np.random.seed(1)

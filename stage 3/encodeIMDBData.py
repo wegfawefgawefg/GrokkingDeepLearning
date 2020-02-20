@@ -1,13 +1,87 @@
-#   create the corpus
-f = open("reviews.txt")
-rawReviewsLines = f.readlines()
-f.close()
+from pprint import pprint
+import numpy as np
+import json
 
-#   use the corpus to create the list of reviews with word vectors
-reviewTokenSets = [set(line.split(" ")) for line in rawReviewsLines]
-corpusSetUncleaned = list( reviewTokenSets[0].union( *reviewTokenSets[1:] ) )
-corpusSetUncleaned.sort()
-print(corpusSetUncleaned)
+def oneHotSomeReviews(reviews, wordToIndex):
+    oneHotReviews = [oneHotReview(review, wordToIndex) for review in reviews]
+    oneHotReviews = np.array(oneHotReviews)
+    return oneHotReviews
 
+def oneHotReview(review, wordToIndex):
+    oneHotCrushed = np.zeros(len(wordToIndex))
+    for labelIndex in review:
+        oneHotCrushed[labelIndex] = 1.0
+    return oneHotCrushed
 
-#   collapse the review one hot vectors
+def fetchIMDBLabels():
+    #   fetch and prepare the labels
+
+    path = "F:\_SSD_CODEING\GrokkingDeepLearning\stage 3\labels.json"
+    loaded = False
+    try:
+        with open(path, 'r') as inFile:
+            labelsNums = json.load(inFile)
+        loaded = True
+        print("LOADED DATA")
+    except:
+        loaded = False
+
+    if not loaded:
+        f = open("labels.txt")
+        rawLabels = f.readlines()
+        f.close()
+
+        labelsNums = [ 1.0 if line == 'positive\n' else 0.0 for line in rawLabels]
+        with open(path, 'w') as outfile:
+            json.dump(labelsNums, outfile)
+        print("SAVING DATA")
+
+    labels = np.array(labelsNums)
+    print("labels shape: " + str(labels.shape))
+
+    return labels
+
+def getIMDBData():
+    path = "F:\_SSD_CODEING\GrokkingDeepLearning\stage 3\wordNums.json"
+    path2 = "F:\_SSD_CODEING\GrokkingDeepLearning\stage 3\wordToIndex.json"
+    loaded = False
+    try:
+        with open(path, 'r') as inFile:
+            reviewWordNums = json.load(inFile)
+        with open(path2, 'r') as inFile:
+            wordToIndex = json.load(inFile)
+        loaded = True
+        print("LOADED DATA")
+    except:
+        loaded = False
+
+    if not loaded:
+        print("COULDNT LOAD DATA")
+
+        #   create the corpus lookup and the one hot reviews
+        f = open("reviews.txt")
+        rawReviewsLines = f.readlines()
+        f.close()
+
+        #   #   create data set of reviews
+        reviewTokenSets = [set(line.split(" ")) for line in rawReviewsLines]
+
+        #   #   create word to index map
+        corpusUncleaned = list( reviewTokenSets[0].union( *reviewTokenSets[1:] ) )
+        wordToIndex = dict( zip(corpusUncleaned, range(0, len(corpusUncleaned))) )
+
+        #   #   convert token sets to number sets
+        reviewNumSets = []
+        for review in reviewTokenSets:
+            reviewNumSet = []
+            for token in review:
+                reviewNumSet.append( wordToIndex[token] )
+            reviewNumSets.append( reviewNumSet )
+
+        with open(path, 'w') as outfile:
+            json.dump(reviewNumSets, outfile)
+        with open(path2, 'w') as outfile:
+            json.dump(wordToIndex, outfile)
+        print("SAVING DATA")
+
+    return reviewWordNums, wordToIndex

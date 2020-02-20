@@ -1,15 +1,16 @@
 import sys
 import numpy as np
-from keras.datasets import mnist
 from scipy import signal
 import math
 import skimage.measure
 
 import MLUtils as MLUtils
 import ActivationFunctions as activFuncs
+import encodeIMDBData as edb
 
 '''
 -finish chapter 11 god damn you are slow as fuck you spent 2 weeks on conv
+-fix alignment issue
 '''
 
 np.random.seed(1)
@@ -18,49 +19,27 @@ np.random.seed(1)
 train = True
 test = False
 load = False
-visualize = True
 dropout = True
 regularization = False
 alphaDecay = False
+visualize = False
 alpha = 4.0
 weightScaler = 0.01
-alphaDecay = 0.0001
-minAlpha = 0.001
 iterations = 60000
-batchSize = 32
-numLabels = 10
-testBatchSize = 1
-
-#   convolution settings
-numKernels = 8
-kernelWidth = 3
-inputImageWidth = 28
-
-
-
-#   might not need these
-inputSize = inputImageWidth * inputImageWidth
-layer1ConvolvedDataWidth = inputImageWidth - kernelWidth + 1
-postConvLayerSize = layer1ConvolvedDataWidth * layer1ConvolvedDataWidth * numKernels
-print(postConvLayerSize)
-quit()
-#   ----    create network  ----    #
-layer1 = weightScaler * (2.0 * np.random.random((kernelWidth * kernelWidth, numKernels)) - 1.0)
-layer2 = weightScaler * (2.0 * np.random.random((postConvLayerSize, numLabels)) - 1.0)
+batchSize = 2
+hiddenSize = 100
+numLabels = 1
 
 if train or test:
     #   fetch data
-    (rawTrainingData, rawTrainingLabels), (rawTestData, rawTestLabels) = mnist.load_data()
+    x, corpus = edb.getIMDBData()
+    y = edb.fetchIMDBLabels()
 
-    #   ----    prep training  ----    #
-    trainingData = rawTrainingData.reshape(60000, 28*28)
-    trainingData = trainingData / 255.0
-    trainingLabels = MLUtils.oneHot(rawTrainingLabels)
-
-    #   ----    prep testing   ----    #
-    testData = rawTestData.reshape(10000, 28*28)
-    testData = testData / 255.0
-    testLabels = MLUtils.oneHot(rawTestLabels)
+    #   ----    create network  ----    #
+    layer1 = weightScaler * (2.0 * np.random.random(( len(corpus), hiddenSize )) - 1.0) 
+    print("layer1shapep")
+    print(layer1.shape)
+    layer2 = weightScaler * (2.0 * np.random.random(( hiddenSize, numLabels )) - 1.0)
 
 #   ----    train   ----    #
 if train:
@@ -73,14 +52,13 @@ if train:
         
         batchStartIndex = i * batchSize
         batchEndIndex = (i+1) * batchSize
-        inputData = trainingData[batchStartIndex:batchEndIndex]
-        labels = trainingLabels[batchStartIndex:batchEndIndex]
+        nonNpInputData = x[batchStartIndex:batchEndIndex]
+        inputData = edb.oneHotSomeReviews(nonNpInputData, corpus)
+        print("input data shape")
+        print(inputData.shape)
+        labels = y[batchStartIndex:batchEndIndex]
 
-        #   apply convolutions
-        inputData2d = inputData.reshape(batchSize, inputImageWidth, inputImageWidth)
-        batchKernelSectors, kernelizedPreFlatShape = MLUtils.kernelize2d(inputData2d, kernelWidth)
-        convs1Output = batchKernelSectors.dot(layer1)
-        layer1Output = activFuncs.lrelu( convs1Output.reshape( kernelizedPreFlatShape[0], -1 ) )
+        layer1Output = activFuncs.lrelu( inputData.dot( layer1 ) )
 
         if dropout:
             dropoutMask = np.random.randint(2, size=layer1Output.shape)
@@ -88,20 +66,14 @@ if train:
             layer1Output *= 2.0
         layer2Output = layer1Output.dot( layer2 )
 
-        layer2Delta = (labels - layer2Output) / (float(batchSize) * layer2Output.shape[0])
+        layer2Delta = (labels - layer2Output) / float(batchSize)
         layer1Delta = layer2Delta.dot( layer2.T ) * activFuncs.derlrelu(layer1Output)
 
         if dropout:
             layer1Delta *= dropoutMask
 
         layer2 += alpha * layer1Output.T.dot( layer2Delta )
-
-        #   reshape inputs to pass weights to correct kernels
-        layer1Deltas_reshape = layer1Delta.reshape( convs1Output.shape )
-        layer1 += alpha * batchKernelSectors.T.dot( layer1Deltas_reshape )
-
-        if alphaDecay:
-            alpha = max(alpha - alphaDecay, minAlpha)
+        layer1 += alpha * inputData.T.dot( layer1Delta )
 
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
@@ -127,26 +99,21 @@ if load:
 
 if visualize:
     # layers = [layer1, layer2]
-    layers = [layer1]
+    layers = [layer1, layer2]
     MLUtils.visualizeLayers(layers)
 
 #   ----    test    ----    #
-testIterations = len(testData)
 if test:
     error = 0.0
     numCorrect = 0
     for i in range(testIterations):
         
-        batchStartIndex = i * testBatchSize
-        batchEndIndex = (i+1) * testBatchSize
-        inputData = trainingData[batchStartIndex:batchEndIndex]
-        labels = trainingLabels[batchStartIndex:batchEndIndex]
+        batchStartIndex = i * batchSize
+        batchEndIndex = (i+1) * batchSize
+        inputData = x[batchStartIndex:batchEndIndex]
+        labels = y[batchStartIndex:batchEndIndex]
 
-        #   apply convolutions
-        inputData2d = inputData.reshape(testBatchSize, inputImageWidth, inputImageWidth)
-        batchKernelSectors, kernelizedPreFlatShape = MLUtils.kernelize2d(inputData2d, kernelWidth)
-        convs1Output = batchKernelSectors.dot(layer1)
-        layer1Output = activFuncs.lrelu( convs1Output.reshape( kernelizedPreFlatShape[0], -1 ) )
+        layer1Output = activFuncs.lrelu( inputData.dot( layer1 ) )
         layer2Output = layer1Output.dot( layer2 )
 
         layer2Delta = labels - layer2Output

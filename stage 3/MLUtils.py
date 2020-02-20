@@ -7,8 +7,8 @@ last update:
     now supports image squaring!
     instead of cropping rectangular inputs to smaller squares. yay
 '''
-def oneHot(labels):
-    oneHotLabels = np.zeros((len(labels), 10))
+def oneHot(labels, numLabels):
+    oneHotLabels = np.zeros((len(labels), numLabels))
     for i, labelIndex, in enumerate(labels):
         oneHotLabels[i][labelIndex] = 1.0
     return oneHotLabels
