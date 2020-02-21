@@ -2,6 +2,7 @@ from pprint import pprint
 import numpy as np
 import json
 
+'''
 def oneHotSomeReviews(reviews, wordToIndex):
     oneHotReviews = [oneHotReview(review, wordToIndex) for review in reviews]
     oneHotReviews = np.array(oneHotReviews)
@@ -12,6 +13,7 @@ def oneHotReview(review, wordToIndex):
     for labelIndex in review:
         oneHotCrushed[labelIndex] = 1.0
     return oneHotCrushed
+'''
 
 def fetchIMDBLabels():
     #   fetch and prepare the labels
@@ -22,7 +24,7 @@ def fetchIMDBLabels():
         with open(path, 'r') as inFile:
             labelsNums = json.load(inFile)
         loaded = True
-        print("LOADED DATA")
+        print("LOADED LABEL DATA")
     except:
         loaded = False
 
@@ -34,7 +36,8 @@ def fetchIMDBLabels():
         labelsNums = [ 1.0 if line == 'positive\n' else 0.0 for line in rawLabels]
         with open(path, 'w') as outfile:
             json.dump(labelsNums, outfile)
-        print("SAVING DATA")
+        print("SAVING LABEL DATA")
+        quit()
 
     labels = np.array(labelsNums)
     print("labels shape: " + str(labels.shape))
@@ -48,15 +51,16 @@ def getIMDBData():
     try:
         with open(path, 'r') as inFile:
             reviewWordNums = json.load(inFile)
+            reviewWordNums = [np.array(review) for review in reviewWordNums]
         with open(path2, 'r') as inFile:
             wordToIndex = json.load(inFile)
         loaded = True
-        print("LOADED DATA")
+        print("LOADED TRAINING DATA")
     except:
         loaded = False
 
     if not loaded:
-        print("COULDNT LOAD DATA")
+        print("COULDNT LOAD TRAINING DATA")
 
         #   create the corpus lookup and the one hot reviews
         f = open("reviews.txt")
@@ -77,11 +81,13 @@ def getIMDBData():
             for token in review:
                 reviewNumSet.append( wordToIndex[token] )
             reviewNumSets.append( reviewNumSet )
+        reviewWordNums = reviewNumSets 
 
         with open(path, 'w') as outfile:
-            json.dump(reviewNumSets, outfile)
+            json.dump(reviewWordNums, outfile)
         with open(path2, 'w') as outfile:
             json.dump(wordToIndex, outfile)
-        print("SAVING DATA")
+        print("SAVING TRAINING DATA")
+        quit()
 
     return reviewWordNums, wordToIndex

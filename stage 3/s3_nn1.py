@@ -17,70 +17,67 @@ np.random.seed(1)
 
 #   ----    params  ----    #
 train = True
-test = False
+test = True
 load = False
 dropout = True
 regularization = False
 alphaDecay = False
 visualize = False
-alpha = 4.0
+alpha = 0.01
 weightScaler = 0.01
-iterations = 60000
-batchSize = 2
-hiddenSize = 100
+amountOfData = 25000
+numTestData = 1000
+testDataStartIndex = amountOfData - numTestData
+iterations = testDataStartIndex
+hiddenSize = 128
 numLabels = 1
 
 if train or test:
     #   fetch data
-    x, corpus = edb.getIMDBData()
+    x, wordToIndex = edb.getIMDBData()
     y = edb.fetchIMDBLabels()
 
     #   ----    create network  ----    #
-    layer1 = weightScaler * (2.0 * np.random.random(( len(corpus), hiddenSize )) - 1.0) 
-    print("layer1shapep")
-    print(layer1.shape)
+    layer1 = weightScaler * (2.0 * np.random.random(( len(wordToIndex), hiddenSize )) - 1.0) 
     layer2 = weightScaler * (2.0 * np.random.random(( hiddenSize, numLabels )) - 1.0)
 
 #   ----    train   ----    #
 if train:
     error = 0.0
     numCorrect = 0
-    batchRounds = int(iterations / batchSize)
-    for i in range(batchRounds):
+    for i in range(iterations):
         if i%100 == 0:
-           sys.stdout.write( "\r progress: %" + str((i/batchRounds)*100)[:5] ) 
-        
-        batchStartIndex = i * batchSize
-        batchEndIndex = (i+1) * batchSize
-        nonNpInputData = x[batchStartIndex:batchEndIndex]
-        inputData = edb.oneHotSomeReviews(nonNpInputData, corpus)
-        print("input data shape")
-        print(inputData.shape)
-        labels = y[batchStartIndex:batchEndIndex]
+           sys.stdout.write( "\r progress: %" + str((i/iterations)*100)[:5] ) 
 
-        layer1Output = activFuncs.lrelu( inputData.dot( layer1 ) )
+        index = i        
+        inputData = x[index]
+        label = y[index]
+
+        layer1Output = activFuncs.relu( np.sum(layer1[inputData], axis=0) )
 
         if dropout:
             dropoutMask = np.random.randint(2, size=layer1Output.shape)
             layer1Output *= dropoutMask
             layer1Output *= 2.0
+
         layer2Output = layer1Output.dot( layer2 )
 
-        layer2Delta = (labels - layer2Output) / float(batchSize)
-        layer1Delta = layer2Delta.dot( layer2.T ) * activFuncs.derlrelu(layer1Output)
+        layer2Delta = label - layer2Output
+        layer1Delta = layer2Delta.dot( layer2.T ) * activFuncs.derRelu(layer1Output)
 
         if dropout:
             layer1Delta *= dropoutMask
 
-        layer2 += alpha * layer1Output.T.dot( layer2Delta )
-        layer1 += alpha * inputData.T.dot( layer1Delta )
+        layer2 += alpha * np.outer(layer1Output, layer2Delta)
+        # layer2 += alpha * layer1Output.T.dot( layer2Delta )
+        layer1[inputData] += alpha * layer1Delta
 
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
-        numCorrect += np.sum(np.argmax(layer2Output, axis=-1) == np.argmax(labels, axis=-1))
+        numCorrect += np.abs(layer2Delta) < 0.5
         
-    trainingError = error / float(batchRounds) * 100.0
-    trainingAccuracy = numCorrect / float(batchRounds * batchSize) * 100.0
+    trainingError = error / float(iterations) * 100.0
+    trainingAccuracy = numCorrect / float(iterations) * 100.0
     sys.stdout.write(
         "\r iter: " + str(i) + \
         " training error: %"+str(trainingError)[0:5] + \
@@ -106,25 +103,22 @@ if visualize:
 if test:
     error = 0.0
     numCorrect = 0
-    for i in range(testIterations):
-        
-        batchStartIndex = i * batchSize
-        batchEndIndex = (i+1) * batchSize
-        inputData = x[batchStartIndex:batchEndIndex]
-        labels = y[batchStartIndex:batchEndIndex]
+    for i in range(0, numTestData):
+        index = testDataStartIndex + i
+        inputData = x[index]
+        label = y[index]
 
-        layer1Output = activFuncs.lrelu( inputData.dot( layer1 ) )
+        layer1Output = activFuncs.lrelu( np.sum(layer1[inputData], axis=0) )
         layer2Output = layer1Output.dot( layer2 )
 
-        layer2Delta = labels - layer2Output
-
+        layer2Delta = label - layer2Output
+        
         #   stats
         error += np.sum(np.power(layer2Delta, 2))
-        if int( np.argmax(layer2Output) ) == np.argmax(labels):
-            numCorrect += 1
+        numCorrect += np.abs(layer2Delta) < 0.5
         
-    testError = error / float(len(testData)) * 100.0
-    testAccuracy = numCorrect / float(len(testData)) * 100.0
+    testError = error / float(numTestData) * 100.0
+    testAccuracy = numCorrect / float(numTestData) * 100.0
     sys.stdout.write(
         "\r iter: " + str(i) + \
         " test error: %"+str(testError)[0:5] + \
