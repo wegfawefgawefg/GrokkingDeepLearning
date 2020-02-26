@@ -26,4 +26,4 @@ def softmax(x):
     return temp / np.sum(temp, axis=1, keepdims=True)
 
 def sigmoid(x):
-    return 1/1 + np.exp(-x)
+    return 1/(1 + np.exp(-x))
