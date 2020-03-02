@@ -47,3 +47,4 @@ wordVecs['socks'] -= alpha * socksDelta
 wordVecs['defeat'] -= alpha * defeatDelta
 identity -= alpha * np.outer( layer1Output, layer2Delta)
 identity -= alpha * np.outer( layer0Output, layer1Delta)
+weights -= np.outer(layer2Output, layer3Delta) * alpha
