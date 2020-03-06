@@ -40,6 +40,7 @@ vocab = set()
 for line in lines:
     for word in line:
         vocab.add(word)
+vocab = list(vocab)
 print("Vocab size" + str(len(vocab)) + '/n')
     
 wordToIndex = {}
@@ -132,3 +133,16 @@ for i in range(30000):
     
     if (i % 1000) == 0:
         print("perplexity:" + str(np.exp(loss/len(sent))))
+
+sent_index = 4
+
+l,_ = predict(wordsToIndices(lines[sent_index]))
+
+print(lines[sent_index])
+
+for i,each_layer in enumerate(l[1:-1]):
+    input = lines[sent_index][i]
+    true = lines[sent_index][i+1]
+    pred = vocab[each_layer['pred'].argmax()]
+    print("Prev Input:" + input + (' ' * (12 - len(input))) +\
+          "True:" + true + (" " * (15 - len(true))) + "Pred:" + pred)
