@@ -60,36 +60,115 @@ class Tensor:
                (self.all_children_grads_accounted_for() or 
                 grad_origin is None)):
 
-                if self.creationOp == "add":
-                    for i in range(len(self.creators)):
-                        self.creators[i].backprop(self.grad)
+                if(self.creationOp == "add"):
+                    self.creators[0].backprop(self.grad, self)
+                    self.creators[1].backprop(self.grad, self)
+                    
+                if(self.creationOp == "sub"):
+                    self.creators[0].backprop(Tensor(self.grad.data), self)
+                    self.creators[1].backprop(Tensor(self.grad.__neg__().data), self)
 
-                elif self.creationOp == "sub":
-                    for i in range(len(self.creators)):
-                        self.creators[i].backprop(self.grad)
+                if(self.creationOp == "mul"):
+                    new = self.grad * self.creators[1]
+                    self.creators[0].backprop(new , self)
+                    new = self.grad * self.creators[0]
+                    self.creators[1].backprop(new, self)                    
+                    
+                if(self.creationOp == "mm"):
+                    c0 = self.creators[0]
+                    c1 = self.creators[1]
+                    new = self.grad.mm(c1.transpose())
+                    c0.backprop(new)
+                    new = self.grad.transpose().mm(c0).transpose()
+                    c1.backprop(new)
+                    
+                if(self.creationOp == "transpose"):
+                    self.creators[0].backprop(self.grad.transpose())
+
+                if("sum" in self.creationOp):
+                    dim = int(self.creationOp.split("_")[1])
+                    self.creators[0].backprop(self.grad.expand(dim,
+                                                               self.creators[0].data.shape[dim]))
+
+                if("expand" in self.creationOp):
+                    dim = int(self.creationOp.split("_")[1])
+                    self.creators[0].backprop(self.grad.sum(dim))
+                    
+                if(self.creationOp == "neg"):
+                    self.creators[0].backprop(self.grad.__neg__())
 
     ###############    TENSOR OPERATIONS   ##################
-    def __add__(self, operand):
-        if self.autograd and operand.autograd:
-            return Tensor(
-                data        = self.data + operand.data, 
-                autograd    = True,
-                creators    = [self, operand], 
-                creationOp  = "add",
-                )
-        else:
-            return Tensor( data = self.data + operand.data )
+    def __add__(self, other):
+        if(self.autograd and other.autograd):
+            return Tensor(self.data + other.data,
+                        autograd=True,
+                        creators=[self,other],
+                        creationOp="add")
+        return Tensor(self.data + other.data)
+
+    def __neg__(self):
+        if(self.autograd):
+            return Tensor(self.data * -1,
+                          autograd=True,
+                          creators=[self],
+                          creationOp="neg")
+        return Tensor(self.data * -1)
     
-    def __sub__(self, operand):
-        if self.autograd and operand.autograd:
-            return Tensor(
-                data        = self.data - operand.data, 
-                autograd    = True,
-                creators    = [self, operand], 
-                creationOp  = "sub",
-                )
-        else:
-            return Tensor( data = self.data - operand.data )
+    def __sub__(self, other):
+        if(self.autograd and other.autograd):
+            return Tensor(self.data - other.data,
+                          autograd=True,
+                          creators=[self,other],
+                          creationOp="sub")
+        return Tensor(self.data - other.data)
+    
+    def __mul__(self, other):
+        if(self.autograd and other.autograd):
+            return Tensor(self.data * other.data,
+                          autograd=True,
+                          creators=[self,other],
+                          creationOp="mul")
+        return Tensor(self.data * other.data)    
+
+    def sum(self, dim):
+        if(self.autograd):
+            return Tensor(self.data.sum(dim),
+                          autograd=True,
+                          creators=[self],
+                          creationOp="sum_"+str(dim))
+        return Tensor(self.data.sum(dim))
+    
+    def expand(self, dim,copies):
+
+        trans_cmd = list(range(0,len(self.data.shape)))
+        trans_cmd.insert(dim,len(self.data.shape))
+        new_data = self.data.repeat(copies).reshape(list(self.data.shape) + [copies]).transpose(trans_cmd)
+        
+        if(self.autograd):
+            return Tensor(new_data,
+                          autograd=True,
+                          creators=[self],
+                          creationOp="expand_"+str(dim))
+        return Tensor(new_data)
+    
+    def transpose(self):
+        if(self.autograd):
+            return Tensor(self.data.transpose(),
+                          autograd=True,
+                          creators=[self],
+                          creationOp="transpose")
+        
+        return Tensor(self.data.transpose())
+    
+    def mm(self, x):
+        if(self.autograd):
+            return Tensor(self.data.dot(x.data),
+                          autograd=True,
+                          creators=[self,x],
+                          creationOp="mm")
+        return Tensor(self.data.dot(x.data))
+
+
 
     ###############    REPR/STR   ##################
     def __repr__(self):
