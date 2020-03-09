@@ -31,7 +31,7 @@ class Tensor:
                 return False
         return True    
 
-    def backprop(self,grad=None, grad_origin=None):
+    def backprop(self, grad=None, grad_origin=None):
         if self.autograd:
             #   so you dont have to pass in ones to backprop from end of network
             if(grad is None):
@@ -96,6 +96,26 @@ class Tensor:
                     
                 if(self.creationOp == "neg"):
                     self.creators[0].backprop(self.grad.__neg__())
+
+                if(self.creationOp == "sigmoid"):
+                    ones = Tensor(np.ones_like(self.grad.data))
+                    self.creators[0].backprop(self.grad * (self * (ones - self)))
+
+                if(self.creationOp == "tanh"):
+                    ones = Tensor(np.ones_like(self.grad.data))
+                    self.creators[0].backprop(self.grad * (ones - (self * self)))
+
+                if(self.creationOp == "indexSelect"):
+                    newGrad = np.zeros_like(self.creators[0].data)
+                    indices_ = self.indexSelectIndices.data.flatten()
+                    grad_ = grad.data.reshape( len(indices_), -1 )
+                    for i in range(len(indices_)):
+                        newGrad[indices_[i]] += grad_[i]
+                    self.creators[0].backprop(Tensor(newGrad))
+
+                if(self.creationOp == "crossEntropy"):
+                    dx = self.softmaxOutput - self.targetDist
+                    self.creators[0].backprop(Tensor(dx))
 
     ###############    TENSOR OPERATIONS   ##################
     def __add__(self, other):
@@ -168,7 +188,57 @@ class Tensor:
                           creationOp="mm")
         return Tensor(self.data.dot(x.data))
 
+    def sigmoid(self):
+        if(self.autograd):
+            return Tensor(
+                data=1 / (1 + np.exp(-self.data)),
+                autograd=True,
+                creators=[self],
+                creationOp="sigmoid")
+        return Tensor(1 / (1 + np.exp(-self.data)))
+    
+    def tanh(self):
+        if(self.autograd):
+            return Tensor(
+                data=np.tanh(self.data),
+                autograd=True,
+                creators=[self],
+                creationOp="tanh")
+        return Tensor(np.tanh(self.data))
 
+    def indexSelect(self, indices):
+        if(self.autograd):
+            new = Tensor(
+                self.data[indices.data],
+                autograd=True,
+                creators=[self],
+                creationOp="indexSelect")
+            new.indexSelectIndices = indices
+            return new
+        return Tensor(self.data[indices.dat])
+
+    def crossEntropy(self, targetIndices):
+        temp = np.exp(self.data)
+        softmaxOutput = temp / np.sum(temp,
+                                    axis=len(self.data.shape)-1,
+                                    keepdims=True)
+        
+        t = targetIndices.data.flatten()
+        p = softmaxOutput.reshape(len(t),-1)
+        targetDist = np.eye(p.shape[1])[t]
+        loss = -(np.log(p) * (targetDist)).sum(1).mean()
+    
+        if(self.autograd):
+            out = Tensor(loss,
+                        autograd=True,
+                        creators=[self],
+                        creationOp="crossEntropy")
+            out.softmaxOutput = softmaxOutput
+            out.targetDist = targetDist
+            return out
+
+        return Tensor(loss)
+        
 
     ###############    REPR/STR   ##################
     def __repr__(self):

@@ -13,4 +13,3 @@ class SGD:
             
             if zero:
                 parameter.grad.data *= 0
-
