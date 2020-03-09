@@ -50,17 +50,17 @@ class RNNCell(Layer):
         else:
             raise Exception("no non-linearity... no activation function")
 
-        self.weightsInternal = Linear(numInputs, numHidden)
+        self.weightsInput = Linear(numInputs, numHidden)
         self.weightsHidden = Linear(numHidden, numHidden)
         self.weightsOutput = Linear(numHidden, numOutput)
 
-        self.parameters += self.weightsInternal.getParameters()
+        self.parameters += self.weightsInput.getParameters()
         self.parameters += self.weightsHidden.getParameters()
         self.parameters += self.weightsOutput.getParameters()
 
     def forward(self, input, hidden):
-        hiddenOut = self.weightsInternal.forward(hidden)
-        combo = self.weightsInternal.forward(hidden) + hiddenOut
+        hiddenOut = self.weightsHidden.forward(hidden)
+        combo = self.weightsInput.forward(input) + hiddenOut
         newHidden = self.activation.forward(combo)
         output = self.weightsOutput.forward(newHidden)
         return output, newHidden
