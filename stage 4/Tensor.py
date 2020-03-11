@@ -217,6 +217,13 @@ class Tensor:
             return new
         return Tensor(self.data[indices.dat])
 
+    def softmax(self):
+        temp = np.exp(self.data)
+        softmaxOutput = temp / np.sum(  temp,
+                                        axis=len(self.data.shape)-1,
+                                        keepdims=True)
+        return softmaxOutput
+
     def crossEntropy(self, targetIndices):
         temp = np.exp(self.data)
         softmaxOutput = temp / np.sum(temp,
