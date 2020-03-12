@@ -7,15 +7,16 @@ class Tensor:
                  creators = None, 
                  creationOp = None,
                  id = None):
-        if id is None:
-            self.id = np.random.randint(0, 100000)
-        else:
-            self.id = id
+
         self.data = np.array(data)
         self.autograd = autograd
         self.grad = None
         self.creationOp = creationOp
         self.creators = creators
+        if id is None:
+            self.id = np.random.randint(0, 100000)
+        else:
+            self.id = id
 
         self.children = {}
         if creators is not None:
@@ -40,6 +41,11 @@ class Tensor:
             #   havent yet pooled all gradients from children yet
             if(grad_origin is not None):
                 if(self.children[grad_origin.id] == 0):
+                    print(self.id)
+                    print(self.creationOp)
+                    print(len(self.creators))
+                    for c in self.creators:
+                        print(c.creationOp)
                     raise Exception("cannot backprop more than once")
                 else:
                     self.children[grad_origin.id] -= 1

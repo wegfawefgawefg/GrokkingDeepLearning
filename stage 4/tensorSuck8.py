@@ -19,6 +19,9 @@ from Layer import ( Sequential,
 
 np.random.seed(0)
 
+#############################################
+save = False
+
 ###########     DATA WRANGLING      ##########
 filePath = "F:\\_SSD_CODEING\\GrokkingDeepLearning\\stage 4\\shakespear.txt"
 with open(filePath, 'r') as f:
@@ -31,12 +34,13 @@ for i, word in enumerate(vocab):
 indices = [wordToIndex[c] for c in raw]
 indices = np.array(indices)
 
-#   save the vocab
-pickle.dump( vocab, open( "vocab.p", "wb" ) )
-#   save the indices
-pickle.dump( indices, open( "indices.p", "wb" ) )
-#   save wordToIndex
-pickle.dump( wordToIndex, open( "wordToIndex.p", "wb" ) )
+if save:
+    #   save the vocab
+    pickle.dump( vocab, open( "vocab.p", "wb" ) )
+    #   save the indices
+    pickle.dump( indices, open( "indices.p", "wb" ) )
+    #   save wordToIndex
+    pickle.dump( wordToIndex, open( "wordToIndex.p", "wb" ) )
 
 
 #############################################
@@ -131,8 +135,8 @@ def train(iterations=100):
 train()
 print(generateSample(n=200, initChar='\n'))
 
-
-#   save embedd
-pickle.dump( embed, open( "embed.p", "wb" ) )
-#   save the model
-pickle.dump( model, open( "model.p", "wb" ) )
+if save:
+    #   save embedd
+    pickle.dump( embed, open( "embed.p", "wb" ) )
+    #   save the model
+    pickle.dump( model, open( "model.p", "wb" ) )

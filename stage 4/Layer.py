@@ -10,17 +10,20 @@ class Layer:
 
 ###############    SINGLE LAYERS   ##################
 class Linear(Layer):
-    def __init__(self, numInputs, numOutputs):
+    def __init__(self, numInputs, numOutput, bias=True):
         super().__init__()
-        W = np.random.randn(numInputs, numOutputs) * np.sqrt(2.0/numInputs)
+        self.useBias = bias
+        W = np.random.randn(numInputs, numOutput) * np.sqrt(2.0/numInputs)
         self.weights = Tensor(W, autograd=True)
-        self.bias = Tensor(np.zeros(numOutputs), autograd=True)
-
         self.parameters.append(self.weights)
-        self.parameters.append(self.bias)
+        if self.useBias:
+            self.bias = Tensor(np.zeros(numOutput), autograd=True)
+            self.parameters.append(self.bias)
 
     def forward(self, input):
-        return input.mm(self.weights) + self.bias.expand(0, len(input.data))
+        if self.useBias:
+            return input.mm(self.weights) + self.bias.expand(0, len(input.data))
+        return input.mm(self.weights)
 
 class Embedding(Layer):
     def __init__(self, vocabSize, dim):
@@ -67,6 +70,61 @@ class RNNCell(Layer):
 
     def initHidden(self, batchSize=1):
         return Tensor(np.zeros((batchSize, self.numHidden)), autograd=True)
+
+class LSTMCell(Layer):
+    def __init__(self, numInputs, numHidden, numOutput):
+        super().__init__()
+
+        self.numInputs = numInputs
+        self.numHidden = numHidden
+        self.numOutput = numOutput
+
+        self.xf = Linear(numInputs, numHidden)
+        self.xi = Linear(numInputs, numHidden)
+        self.xo = Linear(numInputs, numHidden)        
+        self.xc = Linear(numInputs, numHidden)        
+        
+        self.hf = Linear(numHidden, numHidden, bias=False)
+        self.hi = Linear(numHidden, numHidden, bias=False)
+        self.ho = Linear(numHidden, numHidden, bias=False)
+        self.hc = Linear(numHidden, numHidden, bias=False)        
+        
+        self.w_ho = Linear(numHidden, numOutput, bias=False)
+        
+        self.parameters += self.xf.getParameters()
+        self.parameters += self.xi.getParameters()
+        self.parameters += self.xo.getParameters()
+        self.parameters += self.xc.getParameters()
+
+        self.parameters += self.hf.getParameters()
+        self.parameters += self.hi.getParameters()        
+        self.parameters += self.ho.getParameters()        
+        self.parameters += self.hc.getParameters()                
+        
+        self.parameters += self.w_ho.getParameters()        
+    
+    def forward(self, input, hidden):
+        
+        prevHidden = hidden[0]        
+        prevCell = hidden[1]
+        
+        f = (self.xf.forward(input) + self.hf.forward(prevHidden)).sigmoid()
+        i = (self.xi.forward(input) + self.hi.forward(prevHidden)).sigmoid()
+        o = (self.xo.forward(input) + self.ho.forward(prevHidden)).sigmoid()        
+        g = (self.xc.forward(input) + self.hc.forward(prevHidden)).tanh()        
+        c = (f * prevCell) + (i * g)
+
+        h = o * c.tanh()
+        
+        output = self.w_ho.forward(h)
+        return output, (h, c)
+    
+    def initHidden(self, batchSize=1):
+        h = Tensor(np.zeros((batchSize,self.numHidden)), autograd=True)
+        c = Tensor(np.zeros((batchSize,self.numHidden)), autograd=True)
+        h.data[:,0] += 1
+        c.data[:,0] += 1
+        return (h, c)
 
 ###############    MODEL LAYERS   ##################
 class Sequential(Layer):
